@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import base64
 import os
-# --- BACKGROUND IMAGE LOGIC ---
 from pathlib import Path
 
 # --- CLOUD DEPLOYMENT API ENDPOINTS ---
@@ -19,8 +18,19 @@ PREDICT_URL = f"{API_BASE_URL}/predict"
 # Set layout to "wide"
 st.set_page_config(page_title="Volatility Forecaster", layout="wide")
 
+# --- AUTO WAKE-UP / HEALTH PING FOR RENDER ---
+@st.cache_resource
+def wake_up_backend():
+    """Silently pings the backend on app load to wake up Render's free tier from sleep."""
+    try:
+        requests.get(API_BASE_URL, timeout=3)
+    except Exception:
+        pass
 
+# Trigger wake-up call in the background
+wake_up_backend()
 
+# --- BACKGROUND IMAGE LOGIC ---
 def set_background(image_relative_path):
     # Dynamically resolve the absolute path relative to app.py
     base_dir = Path(__file__).resolve().parent
@@ -96,7 +106,7 @@ st.divider()
 # Button 1: Train the Model
 current_date = datetime.now().strftime("%b %d, %Y")
 if st.button(f"1. Train Model Till {current_date}", use_container_width=True):
-    with st.spinner(f"Fetching data and training model for {ticker}..."):
+    with st.spinner(f"Fetching data and training model for {ticker} (if Render is sleeping, this may take ~30s)..."):
         payload = {
             "ticker": ticker,
             "use_new_data": True,
@@ -105,7 +115,7 @@ if st.button(f"1. Train Model Till {current_date}", use_container_width=True):
             "q": q
         }
         try:
-            response = requests.post(FIT_URL, json=payload)
+            response = requests.post(FIT_URL, json=payload, timeout=60)
             data = response.json()
 
             if data.get("success"):
@@ -114,6 +124,8 @@ if st.button(f"1. Train Model Till {current_date}", use_container_width=True):
                 st.error(f"Error: {data.get('message')}")
         except requests.exceptions.ConnectionError:
             st.error(f"Failed to connect to the backend at {API_BASE_URL}. Is the server running?")
+        except requests.exceptions.Timeout:
+            st.error("The request timed out. Render's free tier was likely waking up from sleep. Please try clicking Train again!")
 
 # Button 2: Get Predictions (Stacked below Button 1)
 if st.button("2. Forecast Volatility", use_container_width=True):
@@ -123,7 +135,7 @@ if st.button("2. Forecast Volatility", use_container_width=True):
             "n_days": n_days
         }
         try:
-            response = requests.post(PREDICT_URL, json=payload)
+            response = requests.post(PREDICT_URL, json=payload, timeout=30)
             data = response.json()
 
             if data.get("success"):
@@ -182,3 +194,5 @@ if st.button("2. Forecast Volatility", use_container_width=True):
                 st.warning(f"Failed: {data.get('message')} Make sure to Train the model first!")
         except requests.exceptions.ConnectionError:
             st.error(f"Failed to connect to the backend at {API_BASE_URL}. Is the server running?")
+        except requests.exceptions.Timeout:
+            st.error("The request timed out while waiting for Render. Please try again.")
