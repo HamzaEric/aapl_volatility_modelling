@@ -77,6 +77,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+st.warning(
+    "⚠️ **Hosting Notice:** This application is hosted on free cloud tiers. "
+    "If the backend is sleeping, the first request may take up to 40 seconds to spin up the server."
+)
+
 st.title("AAPL Stock Volatility Forecasting Using a GARCH(1,1) Model")
 st.write("Train a GARCH model and forecast future volatility for any stock.")
 
