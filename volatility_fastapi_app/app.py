@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import base64
 import os
+# --- BACKGROUND IMAGE LOGIC ---
+from pathlib import Path
 
 # --- CLOUD DEPLOYMENT API ENDPOINTS ---
 # Gets the API URL from the environment, defaulting to localhost for local testing
@@ -17,9 +19,14 @@ PREDICT_URL = f"{API_BASE_URL}/predict"
 # Set layout to "wide"
 st.set_page_config(page_title="Volatility Forecaster", layout="wide")
 
-# --- BACKGROUND IMAGE LOGIC ---
-def set_background(image_path):
-    if os.path.exists(image_path):
+
+
+def set_background(image_relative_path):
+    # Dynamically resolve the absolute path relative to app.py
+    base_dir = Path(__file__).resolve().parent
+    image_path = base_dir / image_relative_path
+    
+    if image_path.exists():
         with open(image_path, "rb") as image_file:
             encoded_string = base64.b64encode(image_file.read()).decode()
 
@@ -38,7 +45,7 @@ def set_background(image_path):
         """
         st.markdown(css, unsafe_allow_html=True)
     else:
-        st.warning(f"Background image not found at: {image_path}. Make sure it's in the 'images' folder.")
+        st.warning(f"Background image not found at absolute path: {image_path}. Make sure it's pushed to GitHub.")
 
 # Call the function to set the background
 set_background("images/apple_3.jpg")
